@@ -4,8 +4,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.8] - 
+### Added
+- Users can now fit either for the Kipping (2013) parametrization (q1, q2) or fit directly for coefficients (u1, u2). The former allows for linear, quadratic, square-root and logarithmic laws. The latter for the same plus exponential and power2.
+- Users can now also fit for the non-linear law by using the (c1, c2, c3, c4) coefficients.
+- Users can now add their own non-linear (additive) functions by passing `non_linear_functions` to `juliet.load`. It has to contain the actual function to be evaluated under `non_linear_functions['function']` and the regressor it will be evaluated on `non_linear_functions['regressor']`.
+ 
+### Fixed
+- Now user can print posteriors of fits with eccentricity free and omega fixed.
+- Bug on circular orbits with travel time light-delay (see PR #124) thanks to @JeffValenti.
 
-## [2.2.5] - 
+## [2.2.7] - 2024-05-31
+### Fixed
+- Now dynesty inputs can be given to `juliet` for both, the general properties (e.g., `bound`) _and_ the sampler properties (e.g., nlive).
+
+## [2.2.6] - 2024-05-30
+### Fixed
+- New dynesty version not using all cores with how multiprocessing is incorporated in `juliet`. Now it works, but one has to add the pesky `if __name__ == '__main__':` to the start of scripts using this.
+- Fixed `Gamma` parameter on the Exp-sine-squared kernel, for which `juliet` was actually fitting log(`Gamma`) and not `Gamma`, as pointed out in #118.
+- Fixed bug on binning with given errorbars pointed out in #117.
+- Fixed bug that didn't let `dynesty` args to be passed with newest `dynesty` version (as noted in #109).
+
+### Added
+- Exception if user tries to fit `a_p1` and `rho` (covering issue #116).
+
+
+## [2.2.5] - 2024-03-01 
 ### Fixed
 - Bug of multi-instrument fits not updating posteriors by @Jayshil (PR #112).
 - Bug of multi-planet TTV fits (issues #110 and #97) by @melissa-hobson (PR #111).

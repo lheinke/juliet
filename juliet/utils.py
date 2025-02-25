@@ -35,13 +35,23 @@ def init_batman(t, ld_law, nresampling=None, etresampling=None):
      params.w = 90.
 
      if ld_law == 'linear':
+
          params.u = [0.5]
+
+     elif ld_law == 'nonlinear':
+
+         params.u = [0.1, 0.1, 0.1, 0.1]
+
      else:
+
          params.u = [0.1,0.3]
 
      if ld_law == 'none':
+
          params.limb_dark = 'quadratic'
+
      else:
+
          params.limb_dark = ld_law
 
      params.fp = 0.001
@@ -160,7 +170,7 @@ def correct_light_travel_time(times, params):
     else:
         # No need to solve Kepler's equation for circular orbits, so save
         # some computation time
-        transit_x = a*np.sin(params.inc)
+        transit_x = a*np.sin(params.inc*np.pi/180)
         old_x = transit_x*np.cos(2*np.pi*(times-params.t0)/params.per)
 
     # Get the radial distance variations of the planet
@@ -780,7 +790,7 @@ def bin_data(x, y, n_bin, yerr = None, method = 'median'):
         else:
 
             y_err_bins.append(
-                np.sqrt( np.sum( yerr[i: i + n_bin - 1]**2 ) / len( yerr[i: i + n_bin - 1] )  )
+                np.sqrt( np.sum( yerr[i: i + n_bin - 1]**2 ) ) / float( len( yerr[i: i + n_bin - 1] )  )
                             ) 
 
     return np.array(x_bins), np.array(y_bins), np.array(y_err_bins)
@@ -844,10 +854,18 @@ def writepp(fout, posteriors, priors):
                             'sesinomega_p' + str(iplanet)]**2
                     omega = np.arctan2(posteriors['posterior_samples']['sesinomega_p'+str(iplanet)],\
                                        posteriors['posterior_samples']['secosomega_p'+str(iplanet)])
-                elif 'ecc_' + planet in posteriors['posterior_samples']:
+                elif 'ecc_' + planet in posteriors['posterior_samples'] and 'omega_' + planet in posteriors['posterior_samples']:
                     ecc = posteriors['posterior_samples']['ecc_' + planet]
                     omega = posteriors['posterior_samples'][
                         'omega_' + planet] * np.pi / 180.
+                elif 'ecc_' + planet in posteriors['posterior_samples']:
+                    ecc = posteriors['posterior_samples']['ecc_' + planet]
+                    omega = priors['omega_' + planet]['hyperparameters']
+
+                elif 'omega_' + planet in posteriors['posterior_samples']:
+                    ecc = priors['ecc_' + planet]['hyperparameters']
+                    omega = posteriors['posterior_samples']['omega_' + planet] 
+
                 else:
                     ecc = 0.
                     omega = 90.
