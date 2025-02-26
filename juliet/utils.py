@@ -12,7 +12,7 @@ except:
     have_catwoman = False
 # Try to import spotrod:
 try:
-    import spotrod_mod
+    from . import spotrod_mod
     have_spotrod = True
 except:
     have_spotrod = False

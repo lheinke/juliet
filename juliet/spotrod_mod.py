@@ -20,10 +20,7 @@
 # along with Spotrod.  If not, see <http://www.gnu.org/licenses/>.
 
 import numpy as np
-from ctypes import c_void_p, c_double, c_int, cdll
-
-#load the compiled C library
-spotrod = cdll.LoadLibrary("./spotrod.so")  
+import spotrod
 
 __all__ = ['TransitModel', 'TransitParams']
 
@@ -57,10 +54,10 @@ class TransitModel(object):
 		self.w = params.w
 		self.u = params.u
 		self.limb_dark = params.limb_dark
-		self.spotx = np.array([params.spotx])
-		self.spoty = np.array([params.spoty])
-		self.spotrad = np.array([params.spotrad])
-		self.spotcont = np.array([params.spotcont])	
+		self.spotx = params.spotx
+		self.spoty = params.spoty
+		self.spotrad = params.spotrad
+		self.spotcont = params.spotcont
 		self.n_r = n_r
 		
 	def quadratic_ld(self, params, r): 
@@ -89,16 +86,22 @@ class TransitModel(object):
 		:return: Orbital elements eta and xi.
 		:rtype: ndarray
 		"""
+		
 		deltaT = self.t - params.t0
-		eta = np.empty(self.t.size)
-		xi = np.empty(self.t.size)
 		k = params.ecc*np.cos(params.w*np.pi/180.)
-		h = params.ecc*np.sin(params.w*np.pi/180.)		
-		spotrod.elements(
-			c_void_p(deltaT.ctypes.data), c_double(params.per),c_double(params.a), c_double(k), c_double(h),c_int(deltaT.size),c_void_p(eta.ctypes.data),c_void_p(xi.ctypes.data))	
+		h = params.ecc*np.sin(params.w*np.pi/180.)
+
+		# HACK: This is a hack to get the C code to work
+		if k == 0.0:
+			k = 1e-100 # Very small number
+		if h == 0.0:
+			h = 1e-100
+
+		eta, xi = spotrod.elements(deltaT, params.per, params.a, k, h)
+
 		return eta, xi
 		
-	def circleangle(self, params, r, z, planetangle):
+	def circleangle(self, params, r, z):
 		"""
 		Calculate half central angle of the arc of circle of radius r (which concentrically spans the inside of the star during integration) that is inside a circle of radius rp (planet).
 
@@ -117,8 +120,7 @@ class TransitModel(object):
 		:return: Planetangle array
 		:rtype: ndarray
 		"""
-		return spotrod.circleangle(
-			c_void_p(r.ctypes.data), c_double(params.rp), c_double(z), c_int(r.size),c_void_p(planetangle.ctypes.data))
+		return spotrod.circleangle(r, params.rp, z)
 
 	def integratetransit(self, params, planetx, planety, z, r, f, planetangle):
 		"""
@@ -148,11 +150,11 @@ class TransitModel(object):
 		:return: Model transit lightcurve
 		:rtype: ndarray
 		"""
-		tmodel = np.empty(self.t.size) 
-		spotrod.integratetransit(
-			c_int(self.t.size), c_int(r.size), c_int(params.spotcont.size),c_void_p(planetx.ctypes.data),c_void_p(planety.ctypes.data),c_void_p(z.ctypes.data),c_double(params.rp),
-			c_void_p(r.ctypes.data),c_void_p(f.ctypes.data),c_void_p(params.spotx.ctypes.data), c_void_p(params.spoty.ctypes.data),
-			c_void_p(params.spotrad.ctypes.data), c_void_p(params.spotcont.ctypes.data),c_void_p(planetangle.ctypes.data),c_void_p(tmodel.ctypes.data))					
+
+		tmodel = spotrod.integratetransit(
+			planetx,  planety, z, params.rp,
+			r, f, params.spotx, params.spoty,
+			params.spotrad,  params.spotcont, planetangle)			
 		return tmodel
 		
 	def light_curve(self, params):
@@ -182,8 +184,8 @@ class TransitModel(object):
 		self.spotx = np.array(params.spotx)
 		self.spoty = np.array(params.spoty)
 		self.spotrad = np.array(params.spotrad)
-		self.spotcont = np.array(params.spotcont)	
-		
+		self.spotcont = np.array(params.spotcont)
+
 		#midpoint rule for integration. 
 		r = np.linspace(1./(2*self.n_r), 1. - 1./(2*self.n_r), self.n_r)
 		#weights: 2.0 times limb darkening times width of integration annulii.
@@ -191,14 +193,14 @@ class TransitModel(object):
 
 		#calculate orbital elements
 		eta, xi = self.elements(params)		
-		planetx = -xi
-		planety = params.b*eta/params.a
+		planetx = params.b*eta/params.a
+		planety = -xi
 		z = np.sqrt(planetx**2 + planety**2)
-		
+
 		#calculate planetangle array
 		planetangle = np.empty((self.t.size, self.n_r))
 		for i in range(self.t.size):
-			self.circleangle(params, r, z[i], planetangle[i]) 
+			planetangle[i] = self.circleangle(params, r, z[i]) 
 			
 		return self.integratetransit(params, planetx, planety, z, r, f, planetangle) 
 						

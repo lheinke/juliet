@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 import juliet
 
-import spotrod_mod
+from juliet import spotrod_mod
 
 # Create dataset:
 def get_transit_model(t):
@@ -19,10 +19,10 @@ def get_transit_model(t):
     params.w = 90.    # longitude of periastron (in degrees) p
     params.limb_dark = 'quadratic' # limb darkening profile to use
     params.u = [0.2,0.3] # limb darkening coefficients
-    params.spotx = np.array(0.)     # spot center x-coordinate (in units of stellar radii in sky-projected coordinate system)
-    params.spoty = np.array(0.)     # spot center y-coordinate (in units of stellar radii in sky-projected coordinate system)
-    params.spotrad = np.array(0.1)  # spot radius (in units of stellar radii) 
-    params.spotcont = np.array(0.9) # spot contrast
+    params.spotx = np.array([0.])     # spot center x-coordinate (in units of stellar radii in sky-projected coordinate system)
+    params.spoty = np.array([0.])     # spot center y-coordinate (in units of stellar radii in sky-projected coordinate system)
+    params.spotrad = np.array([0.1])  # spot radius (in units of stellar radii) 
+    params.spotcont = np.array([0.9]) # spot contrast
     tmodel = spotrod_mod.TransitModel(params, t.astype('float64'))
     return tmodel.light_curve(params)
 
@@ -34,22 +34,11 @@ def standarize_variable(x):
 times = np.linspace(-0.1, 0.1, 300)
 fluxes = get_transit_model(times)
 
-# Add noise (if not already added):
-if not os.path.exists('transit_test.txt'):
+# Add noise
+sigma = 100 # ppm
+noise = np.random.normal(0., sigma*1e-6, len(times))
 
-    sigma = 100 # ppm
-    noise = np.random.normal(0., sigma*1e-6, len(times))
-
-    dataset = fluxes + noise
-
-    fout = open('transit_test.txt', 'w')
-    for i in range(len(dataset)):
-
-        fout.write('{0:.10f}\n'.format(dataset[i]))
-
-else:
-
-    dataset = np.loadtxt('transit_test.txt', unpack=True)
+dataset = fluxes + noise
 
 # Fit:
 jtimes, jfluxes, jfluxes_error = {}, {}, {}
